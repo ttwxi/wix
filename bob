@@ -1,0 +1,97 @@
+6a 
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+int main() {
+    int fd1 = 0, fd2 = 8;
+    char buf[50];
+    if ((fd1 = open("test.txt", O_RDWR, 0)) < 0) printf("file open error");
+
+    dup2(fd1, fd2);
+    printf("%d %d \n", fd1, fd2);
+    read(fd1, buf, 10);
+    lseek(fd2, 0L, SEEK_END);
+    write(fd2, buf, 10);
+    printf("%s\n", buf);
+    return 0;
+} 
+cc 6a.c
+./a.out
+
+
+6b
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[]) {
+    int fd;
+    char buf[256];
+    struct flock fv;
+
+    if (argc < 2) {
+        printf("Usage %s <filename>\n", argv[0]);
+        exit(0);
+    }
+
+    if ((fd = open(argv[1], O_RDWR)) == -1) {
+        perror("open");
+        exit(1);
+    }
+
+    fv.l_type = F_WRLCK;
+    fv.l_whence = SEEK_END;
+    fv.l_start = -100;
+    fv.l_len = 100;
+
+    printf("press enter to set lock\n");
+    getchar();
+
+    printf("locked\n");
+
+    if (lseek(fd, -50, SEEK_END) == -1) {
+        perror("lseek");
+        close(fd);
+        exit(1);
+    }
+
+    ssize_t n = read(fd, buf, 100);
+    if (n == -1) {
+        perror("read");
+        close(fd);
+        exit(1);
+    }
+    buf[n] = '\0';
+
+    printf("data from file:\n%s\n", buf);
+
+    printf("press enter to unlock\n");
+    getchar();
+
+    fv.l_type = F_UNLCK;
+    fv.l_whence = SEEK_SET;
+    fv.l_start = 0;
+    fv.l_len = 0;
+
+    if (fcntl(fd, F_SETLK, &fv) == -1) {
+        perror("fcntl - unlock");
+        close(fd);
+        exit(1);
+    }
+
+    printf("unlocked\n");
+    close(fd);
+    return 0;
+} 
+cc 6b.c
+./a.out test.txt
+
+
+8a
