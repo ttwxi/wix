@@ -93,5 +93,180 @@ int main(int argc, char *argv[]) {
 cc 6b.c
 ./a.out test.txt
 
-
 8a
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdlib.h>
+
+int main(int argc, char * argv[]) {
+    int i;
+    struct stat buf;
+    char *ptr;
+    for (i = 1; i < argc; i++) {
+        printf("%s: ",argv[i]);
+        if (lstat(argv[i], &buf) < 0) {
+            printf("lstat error\n");
+            continue;
+        }
+        if (S_ISREG(buf.st_mode)) ptr = "regular";
+        else if (S_ISDIR(buf.st_mode)) ptr = "directory";
+        else if (S_ISCHR(buf.st_mode)) ptr = "character block";
+        else if (S_ISSOCK(buf.st_mode)) ptr = "socket file";
+        else if (S_ISFIFO(buf.st_mode)) ptr = "FIFO";
+        else if (S_ISBLK(buf.st_mode)) ptr = "block special";
+        else if (S_ISLNK(buf.st_mode)) ptr = "symbolic link";
+        else ptr = "**unknown mode**";
+        printf("%s\n", ptr);
+    }
+    return 0;
+
+
+cc8a.c
+/a.out test.txt myfiofo aahaj
+}
+
+
+
+
+
+8b
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <errno.h>
+
+int main() {
+    pid_t pid;
+    int status;
+    pid_t p_pid = getpid();
+    pid = fork();
+    if (pid == -1) {
+        perror("fork");
+        exit(1);
+    } else if (pid == 0) {
+        pid_t c_pid = getpid();
+        printf("Child process (PID: %d) executing...\n", c_pid);
+        execl("./p1", "p1", "example.txt", (char *)NULL);
+        perror("execl");
+        exit(1);
+    } else {
+        printf("Parent process (PID: %d) executing...\n", p_pid);
+        waitpid(pid, &status, 0);
+        printf("Parent process: Child process (PID: %d) has exited.\n",pid);
+    }
+    return 0;
+}
+
+
+
+p1.c
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <file>\n", argv[0]);
+        exit(1);
+    }
+    char *filename = argv[1];
+    if (access(filename, F_OK) == 0) printf("File %s exists and can be accessed.\n", filename);
+    else printf("File %s does not exist or cannot be accessed.\n", filename);
+    return 0;
+}
+
+
+cc p1.c -o p1
+then cc ./a.
+
+
+
+9a
+
+#include <fcntl.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
+int main() {
+    struct stat statbuf;
+
+    if (stat("foo", &statbuf) < 0) printf("stat error on foo\n");
+
+    if (chmod("foo", (statbuf.st_mode & ~S_IXGRP) | S_IXOTH) < 0) printf("chmod error on foo\n");
+
+    if (chmod("bar", S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) < 0) printf("chmod error for bar\n");
+
+    return 0;
+}
+
+
+
+9a-umask
+
+#include <stdio.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
+#define RWRWRW (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
+
+int main() {
+    umask(0);
+    if (creat("foo", RWRWRW) < 0) {
+        printf("creat error for foo");
+    }
+    umask(S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+
+    if (creat("bar", RWRWRW) < 0) {
+        printf("creat error for bar");
+    }
+    return 0;
+}
+
+cc 9aumask -o umask
+./umask
+ls -l
+same for 9a
+
+
+9b
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main() {
+    char buf[20];
+    int fd = open("seeking", O_RDWR);
+    int a = lseek(fd, 0, SEEK_END);
+    fd = open("seeking", O_RDWR);
+    int fd1 = open("seeking", O_RDWR); 
+    printf("first 20 characters:\n");
+    read(fd, buf, 20);
+    write(1, buf, 20);
+    printf("\nSeek to 10th byte and display 20 characters from there:\n");
+    lseek(fd1, 10, SEEK_SET);
+    read(fd1, buf, 20);
+    write(1, buf, 20);
+    printf("\nSeek 10 bytes ahead from the current file offset and display 20 characters:\n");
+    lseek(fd1, 20, SEEK_SET);
+    read(fd1, buf, 20);
+    write(1, buf, 20);
+    printf("\nFile Size: %d\n", a);
+    return 0;
+}
+cc ./aiut
